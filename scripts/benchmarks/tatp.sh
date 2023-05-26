@@ -1,4 +1,4 @@
-#!/bin/bash
+#!/usr/local/bin/bash
 
 for sf in 10000 100000 1000000; do
   printf "*** TATP (scale factor %s) ***\n" "$sf"

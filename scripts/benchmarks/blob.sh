@@ -1,4 +1,4 @@
-#!/bin/bash
+#!/usr/local/bin/bash
 
 for sf in 100000 1000000 10000000; do
   printf "*** Blob benchmark (scale factor %s) ***\n" "$sf"
