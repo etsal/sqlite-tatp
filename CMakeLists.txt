@@ -3,6 +3,8 @@ project(sqlite_performance)
 
 set(CMAKE_CXX_STANDARD 17)
 set(CMAKE_POLICY_DEFAULT_CMP0077 NEW)
+cmake_path(GET CMAKE_CURRENT_LIST_DIR PARENT_PATH BASE_DIR)
+set(SQLITE_BUILDDIR ${BASE_DIR}/sqlite/build)
 
 include(FetchContent)
 
@@ -37,8 +39,8 @@ FetchContent_MakeAvailable(sqlite3cpp)
 
 add_library(
         sqlite3
-        src/systems/sqlite/sqlite3.c
-        src/systems/sqlite/sqlite3.h
+        ${SQLITE_BUILDDIR}/sqlite3.c
+        ${SQLITE_BUILDDIR}/sqlite3.h
 )
 target_compile_options(
         sqlite3
@@ -60,8 +62,8 @@ target_compile_options(
 
 add_library(
         sqlite3_vdbe_profile
-        src/systems/sqlite/sqlite3.c
-        src/systems/sqlite/sqlite3.h
+        ${SQLITE_BUILDDIR}/sqlite3.c
+        ${SQLITE_BUILDDIR}/sqlite3.h
 )
 target_compile_options(
         sqlite3_vdbe_profile
@@ -80,15 +82,14 @@ target_compile_options(
         -DSQLITE_USE_ALLOCA
         -DSQLITE_OMIT_AUTOINIT
         -DSQLITE_PERFORMANCE_TRACE
-        -DVDBE_PROFILE
         -DSQLITE_HWTIME_USE_INTRINSIC
 )
 
 add_executable(
         sqlite3_shell
-        src/systems/sqlite/shell.c
-        src/systems/sqlite/sqlite3.c
-        src/systems/sqlite/sqlite3.h
+        ${SQLITE_BUILDDIR}/shell.c
+        ${SQLITE_BUILDDIR}/sqlite3.c
+        ${SQLITE_BUILDDIR}/sqlite3.h
 )
 target_compile_options(
         sqlite3_shell
@@ -99,8 +100,8 @@ target_compile_options(
 
 # TATP executable.
 
-add_executable(tatp_sqlite3 src/benchmarks/tatp/tatp_sqlite3.cpp)
-target_include_directories(tatp_sqlite3 PRIVATE src src/systems/sqlite)
+add_executable(tatp_sqlite3 src/tatp/tatp_sqlite3.cpp)
+target_include_directories(tatp_sqlite3 PRIVATE src ${SQLITE_BUILDDIR})
 target_link_libraries(tatp_sqlite3 cxxopts dbbench_tatp sqlite3 sqlite3cpp)
 set_target_properties(
         tatp_sqlite3
@@ -110,8 +111,8 @@ set_target_properties(
 
 # Blob executable.
 
-add_executable(blob_sqlite3 src/benchmarks/blob/blob_sqlite3.cpp)
-target_include_directories(blob_sqlite3 PRIVATE src src/systems/sqlite)
+add_executable(blob_sqlite3 src/blob/blob_sqlite3.cpp)
+target_include_directories(blob_sqlite3 PRIVATE src ${SQLITE_BUILDDIR})
 target_link_libraries(blob_sqlite3 cxxopts dbbench_core sqlite3 sqlite3cpp)
 set_target_properties(
         blob_sqlite3
