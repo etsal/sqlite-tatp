@@ -225,6 +225,8 @@ int main(int argc, char **argv) {
         cxxopts::value<std::string>()->default_value("-1000000"));
   adder("wal_size", "WAL size (in pages)",
         cxxopts::value<std::string>()->default_value("1024"));
+  adder("extension", "SQLite extension to be loaded",
+        cxxopts::value<std::string>()->default_value(""));
 
 
   cxxopts::ParseResult result = options.parse(argc, argv);
@@ -238,6 +240,7 @@ int main(int argc, char **argv) {
   auto journal_mode = result["journal_mode"].as<std::string>();
   auto cache_size = result["cache_size"].as<std::string>();
   auto wal_size = result["wal_size"].as<std::string>();
+  auto extension = result["extension"].as<std::string>();
 
   sqlite::Database db("tatp.sqlite");
 
@@ -246,10 +249,16 @@ int main(int argc, char **argv) {
   }
 
   if (result.count("run")) {
+
     std::vector<Worker> workers;
     for (size_t i = 0; i < result["clients"].as<size_t>(); ++i) {
       sqlite::Connection conn;
       db.connect(conn).expect(SQLITE_OK);
+      if (!extension.empty()) {
+        conn.enable_extensions();
+        conn.load_extension(extension);
+      }
+
       conn.execute("PRAGMA journal_mode=" + journal_mode).expect(SQLITE_OK);
       conn.execute("PRAGMA cache_size=" + cache_size).expect(SQLITE_OK);
       conn.execute("PRAGMA wal_autocheckpoint=" + wal_size).expect(SQLITE_OK);

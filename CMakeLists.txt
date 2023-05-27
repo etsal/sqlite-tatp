@@ -31,7 +31,7 @@ FetchContent_MakeAvailable(dbbench)
 
 FetchContent_Declare(
         sqlite3cpp
-        GIT_REPOSITORY https://github.com/kpgaffney/sqlite3cpp.git
+        GIT_REPOSITORY https://github.com/etsal/sqlite3cpp.git
         GIT_TAG main
 )
 set(SQLITE3CPP_BUILD_TESTS OFF)
@@ -47,7 +47,6 @@ target_compile_options(
         PRIVATE
         -DSQLITE_DQS=0
         -DSQLITE_THREADSAFE=0
-        -DSQLITE_OMIT_LOAD_EXTENSION
         -DSQLITE_DEFAULT_MEMSTATUS=0
         -DSQLITE_DEFAULT_WAL_SYNCHRONOUS=1
         -DSQLITE_LIKE_DOESNT_MATCH_BLOBS
@@ -70,7 +69,6 @@ target_compile_options(
         PRIVATE
         -DSQLITE_DQS=0
         -DSQLITE_THREADSAFE=0
-        -DSQLITE_OMIT_LOAD_EXTENSION
         -DSQLITE_DEFAULT_MEMSTATUS=0
         -DSQLITE_DEFAULT_WAL_SYNCHRONOUS=1
         -DSQLITE_LIKE_DOESNT_MATCH_BLOBS
