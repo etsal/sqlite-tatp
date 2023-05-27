@@ -223,6 +223,9 @@ int main(int argc, char **argv) {
         cxxopts::value<std::string>()->default_value("DELETE"));
   adder("cache_size", "Cache size",
         cxxopts::value<std::string>()->default_value("-1000000"));
+  adder("wal_size", "WAL size (in pages)",
+        cxxopts::value<std::string>()->default_value("1024"));
+
 
   cxxopts::ParseResult result = options.parse(argc, argv);
 
@@ -234,6 +237,7 @@ int main(int argc, char **argv) {
   auto n_subscriber_records = result["records"].as<uint64_t>();
   auto journal_mode = result["journal_mode"].as<std::string>();
   auto cache_size = result["cache_size"].as<std::string>();
+  auto wal_size = result["wal_size"].as<std::string>();
 
   sqlite::Database db("tatp.sqlite");
 
@@ -248,6 +252,7 @@ int main(int argc, char **argv) {
       db.connect(conn).expect(SQLITE_OK);
       conn.execute("PRAGMA journal_mode=" + journal_mode).expect(SQLITE_OK);
       conn.execute("PRAGMA cache_size=" + cache_size).expect(SQLITE_OK);
+      conn.execute("PRAGMA wal_autocheckpoint=" + wal_size).expect(SQLITE_OK);
       workers.emplace_back(std::move(conn), n_subscriber_records);
     }
 
