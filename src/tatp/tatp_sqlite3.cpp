@@ -244,32 +244,27 @@ int main(int argc, char **argv) {
 
   sqlite::Database db("tatp.sqlite");
 
-  if (result.count("load")) {
-    load(db, n_subscriber_records);
-  }
+  load(db, n_subscriber_records);
 
-  if (result.count("run")) {
-
-    std::vector<Worker> workers;
-    for (size_t i = 0; i < result["clients"].as<size_t>(); ++i) {
-      sqlite::Connection conn;
-      db.connect(conn).expect(SQLITE_OK);
-      if (!extension.empty()) {
-        conn.enable_extensions();
-        conn.load_extension(extension);
-      }
-
-      conn.execute("PRAGMA journal_mode=" + journal_mode).expect(SQLITE_OK);
-      conn.execute("PRAGMA cache_size=" + cache_size).expect(SQLITE_OK);
-      conn.execute("PRAGMA wal_autocheckpoint=" + wal_size).expect(SQLITE_OK);
-      workers.emplace_back(std::move(conn), n_subscriber_records);
+  std::vector<Worker> workers;
+  for (size_t i = 0; i < result["clients"].as<size_t>(); ++i) {
+    sqlite::Connection conn;
+    db.connect(conn).expect(SQLITE_OK);
+    if (!extension.empty()) {
+      conn.enable_extensions();
+      conn.load_extension(extension);
     }
 
-    double throughput = dbbench::run(workers, result["warmup"].as<size_t>(),
-                                     result["measure"].as<size_t>());
-
-    std::cout << throughput << std::endl;
+    conn.execute("PRAGMA journal_mode=" + journal_mode).expect(SQLITE_OK);
+    conn.execute("PRAGMA cache_size=" + cache_size).expect(SQLITE_OK);
+    conn.execute("PRAGMA wal_autocheckpoint=" + wal_size).expect(SQLITE_OK);
+    workers.emplace_back(std::move(conn), n_subscriber_records);
   }
+
+  double throughput = dbbench::run(workers, result["warmup"].as<size_t>(),
+                                   result["measure"].as<size_t>());
+
+  std::cout << throughput << std::endl;
 
   return 0;
 }
