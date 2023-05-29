@@ -100,7 +100,7 @@ target_compile_options(
 
 add_executable(tatp_sqlite3 src/tatp/tatp_sqlite3.cpp)
 target_include_directories(tatp_sqlite3 PRIVATE src ${SQLITE_BUILDDIR})
-target_link_libraries(tatp_sqlite3 cxxopts dbbench_tatp sqlite3 sqlite3cpp)
+target_link_libraries(tatp_sqlite3 cxxopts dbbench_tatp sqlite3 sqlite3cpp sls)
 set_target_properties(
         tatp_sqlite3
         PROPERTIES

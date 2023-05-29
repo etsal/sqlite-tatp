@@ -4,10 +4,42 @@
 #include "helpers.hpp"
 #include "sqlite3.hpp"
 
+#include <sls.h>
+#include <unistd.h>
 #include <utility>
 
 template <class... Ts> struct overloaded : Ts... { using Ts::operator()...; };
 template <class... Ts> overloaded(Ts...) -> overloaded<Ts...>;
+
+void setup_sls(int oid) {
+  int error;
+
+  struct sls_attr attr = {
+    .attr_target = SLS_OSD,
+    .attr_mode = SLS_DELTA,
+    .attr_period = 0,
+    .attr_flags = SLSATTR_IGNUNLINKED,
+    .attr_amplification = 1,
+  };
+
+  error = sls_partadd(oid, attr, -1);
+  if (error != 0) {
+	  fprintf(stderr, "sls_partadd: error %d\n", error);
+	  exit(1);
+  }
+
+  error = sls_attach(oid, getpid());
+  if (error != 0) {
+	  fprintf(stderr, "sls_attach: error %d\n", error);
+	  exit(1);
+  }
+
+  error = sls_checkpoint(oid, true);
+  if (error != 0) {
+	  fprintf(stderr, "sls_checkpoint: error %d\n", error);
+	  exit(1);
+  }
+}
 
 void load(sqlite::Database &db, uint64_t n_subscriber_records) {
   sqlite::Connection conn;
@@ -227,7 +259,8 @@ int main(int argc, char **argv) {
         cxxopts::value<std::string>()->default_value("1024"));
   adder("extension", "SQLite extension to be loaded",
         cxxopts::value<std::string>()->default_value(""));
-
+  adder("oid", "Aurora OID",
+        cxxopts::value<std::string>()->default_value("0"));
 
   cxxopts::ParseResult result = options.parse(argc, argv);
 
@@ -241,6 +274,7 @@ int main(int argc, char **argv) {
   auto cache_size = result["cache_size"].as<std::string>();
   auto wal_size = result["wal_size"].as<std::string>();
   auto extension = result["extension"].as<std::string>();
+  auto oid = result["oid"].as<uint64_t>();
 
   sqlite::Database db("tatp.sqlite");
 
@@ -260,6 +294,9 @@ int main(int argc, char **argv) {
     conn.execute("PRAGMA wal_autocheckpoint=" + wal_size).expect(SQLITE_OK);
     workers.emplace_back(std::move(conn), n_subscriber_records);
   }
+
+  if (oid > 0)
+    setup_sls(oid);
 
   double throughput = dbbench::run(workers, result["warmup"].as<size_t>(),
                                    result["measure"].as<size_t>());
