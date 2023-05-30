@@ -45,8 +45,8 @@ add_library(
 target_compile_options(
         sqlite3
         PRIVATE
-		-O2
-		-g 
+	-O2
+	-g 
         -DSQLITE_DQS=0
         -DSQLITE_THREADSAFE=0
         -DSQLITE_DEFAULT_MEMSTATUS=0
@@ -69,8 +69,8 @@ add_library(
 target_compile_options(
         sqlite3_vdbe_profile
         PRIVATE
-		-O2
-		-g 
+	-O2
+	-g 
         -DSQLITE_DQS=0
         -DSQLITE_THREADSAFE=0
         -DSQLITE_DEFAULT_MEMSTATUS=0
