@@ -297,8 +297,8 @@ int main(int argc, char **argv) {
     conn.load_extension(extension);
 
     size_t mapsize_bytes = std::stoi(cache_size) * 1024 * 1024;
-    void *addr = mmap(NULL, mapsize_bytes, PROT_READ | PROT_WRITE,
-    		MAP_ANONYMOUS | MAP_PRIVATE, -1, 0);
+	void *addr = mmap((void *)0x700000000000, mapsize_bytes, PROT_READ | PROT_WRITE,
+		MAP_ANONYMOUS | MAP_PRIVATE | MAP_FIXED, -1, 0);
     if (addr == NULL) {
       perror("mmap");
       exit(1);
