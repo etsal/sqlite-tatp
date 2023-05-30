@@ -4,12 +4,16 @@
 #include "helpers.hpp"
 #include "sqlite3.hpp"
 
+#include <sys/mman.h>
 #include <sls.h>
+#include <cstdio>
 #include <unistd.h>
 #include <utility>
 
 template <class... Ts> struct overloaded : Ts... { using Ts::operator()...; };
 template <class... Ts> overloaded(Ts...) -> overloaded<Ts...>;
+
+#define URI_MAXLEN (4096)
 
 void setup_sls(int oid) {
   int error;
@@ -24,26 +28,33 @@ void setup_sls(int oid) {
 
   error = sls_partadd(oid, attr, -1);
   if (error != 0) {
-	  fprintf(stderr, "sls_partadd: error %d\n", error);
-	  exit(1);
+    fprintf(stderr, "sls_partadd: error %d\n", error);
+    exit(1);
   }
 
   error = sls_attach(oid, getpid());
   if (error != 0) {
-	  fprintf(stderr, "sls_attach: error %d\n", error);
-	  exit(1);
+    fprintf(stderr, "sls_attach: error %d\n", error);
+    exit(1);
   }
 
   error = sls_checkpoint(oid, true);
   if (error != 0) {
-	  fprintf(stderr, "sls_checkpoint: error %d\n", error);
-	  exit(1);
+    fprintf(stderr, "sls_checkpoint: error %d\n", error);
+    exit(1);
   }
 }
 
-void load(sqlite::Database &db, uint64_t n_subscriber_records) {
+void load(sqlite::Database &db, uint64_t n_subscriber_records, std::string &extension) {
   sqlite::Connection conn;
-  db.connect(conn).expect(SQLITE_OK);
+  if (!extension.empty()) {
+    db.connect(conn, extension).expect(SQLITE_OK);
+    int rc = db.connect(conn, extension);
+    if (rc != SQLITE_OK)
+      exit(1);
+  } else {
+    db.connect(conn).expect(SQLITE_OK);
+  }
   for (const std::string &sql : tatp_create_sql("INTEGER", "INTEGER", "INTEGER",
                                                 "INTEGER", "TEXT", true)) {
     conn.execute(sql).expect(SQLITE_OK);
@@ -260,7 +271,7 @@ int main(int argc, char **argv) {
   adder("extension", "SQLite extension to be loaded",
         cxxopts::value<std::string>()->default_value(""));
   adder("oid", "Aurora OID",
-        cxxopts::value<std::string>()->default_value("0"));
+      cxxopts::value<std::string>()->default_value("0"));
 
   cxxopts::ParseResult result = options.parse(argc, argv);
 
@@ -274,29 +285,58 @@ int main(int argc, char **argv) {
   auto cache_size = result["cache_size"].as<std::string>();
   auto wal_size = result["wal_size"].as<std::string>();
   auto extension = result["extension"].as<std::string>();
-  auto oid = result["oid"].as<uint64_t>();
+  auto oid = result["oid"].as<std::string>();
 
-  sqlite::Database db("tatp.sqlite");
+  char fnamebuf[URI_MAXLEN];
+  if (!extension.empty()) {
+    sqlite::Connection conn;
+    sqlite::Database db(":memory:");
 
-  load(db, n_subscriber_records);
+    db.connect(conn).expect(SQLITE_OK);
+    conn.enable_extensions();
+    conn.load_extension(extension);
+
+    size_t mapsize_bytes = std::stoi(cache_size) * 1024 * 1024;
+    void *addr = mmap(NULL, mapsize_bytes, PROT_READ | PROT_WRITE,
+    		MAP_ANONYMOUS | MAP_PRIVATE, -1, 0);
+    if (addr == NULL) {
+      perror("mmap");
+      exit(1);
+    }
+
+    /* Trigger the creation of the underlying object. */
+    *(char *)addr = '1';
+
+    snprintf(fnamebuf, URI_MAXLEN, "file:///tatp.sqlite3.db?ptr=%p&sz=%d&max=%ld&oid=%s",
+		addr,
+    		0,
+    		mapsize_bytes,
+    		oid.c_str());
+  } else {
+    snprintf(fnamebuf, URI_MAXLEN, "tatp.sqlite");
+  }
+
+  sqlite::Database db(fnamebuf);
+
+  if (!extension.empty())
+    setup_sls(std::stoi(oid));
+
+  load(db, n_subscriber_records, extension);
 
   std::vector<Worker> workers;
   for (size_t i = 0; i < result["clients"].as<size_t>(); ++i) {
     sqlite::Connection conn;
-    db.connect(conn).expect(SQLITE_OK);
-    if (!extension.empty()) {
-      conn.enable_extensions();
-      conn.load_extension(extension);
-    }
+    if (!extension.empty())
+      db.connect(conn, extension).expect(SQLITE_OK);
+    else
+      db.connect(conn).expect(SQLITE_OK);
 
     conn.execute("PRAGMA journal_mode=" + journal_mode).expect(SQLITE_OK);
     conn.execute("PRAGMA cache_size=" + cache_size).expect(SQLITE_OK);
     conn.execute("PRAGMA wal_autocheckpoint=" + wal_size).expect(SQLITE_OK);
+    conn.execute("PRAGMA synchronous=NORMAL").expect(SQLITE_OK);
     workers.emplace_back(std::move(conn), n_subscriber_records);
   }
-
-  if (oid > 0)
-    setup_sls(oid);
 
   double throughput = dbbench::run(workers, result["warmup"].as<size_t>(),
                                    result["measure"].as<size_t>());

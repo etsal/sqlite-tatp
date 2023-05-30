@@ -45,6 +45,8 @@ add_library(
 target_compile_options(
         sqlite3
         PRIVATE
+		-O2
+		-g 
         -DSQLITE_DQS=0
         -DSQLITE_THREADSAFE=0
         -DSQLITE_DEFAULT_MEMSTATUS=0
@@ -67,6 +69,8 @@ add_library(
 target_compile_options(
         sqlite3_vdbe_profile
         PRIVATE
+		-O2
+		-g 
         -DSQLITE_DQS=0
         -DSQLITE_THREADSAFE=0
         -DSQLITE_DEFAULT_MEMSTATUS=0
@@ -99,6 +103,12 @@ target_compile_options(
 # TATP executable.
 
 add_executable(tatp_sqlite3 src/tatp/tatp_sqlite3.cpp)
+target_compile_options(tatp_sqlite3 
+						PRIVATE 
+						-g
+						-O2
+						)
+					
 target_include_directories(tatp_sqlite3 PRIVATE src ${SQLITE_BUILDDIR})
 target_link_libraries(tatp_sqlite3 cxxopts dbbench_tatp sqlite3 sqlite3cpp sls)
 set_target_properties(
