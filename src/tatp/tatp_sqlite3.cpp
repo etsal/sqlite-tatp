@@ -265,7 +265,7 @@ int main(int argc, char **argv) {
   adder("journal_mode", "Journal mode",
         cxxopts::value<std::string>()->default_value("DELETE"));
   adder("cache_size", "Cache size",
-        cxxopts::value<std::string>()->default_value("-1000000"));
+        cxxopts::value<std::string>()->default_value("1048576"));
   adder("wal_size", "WAL size (in pages)",
         cxxopts::value<std::string>()->default_value("1024"));
   adder("extension", "SQLite extension to be loaded",
