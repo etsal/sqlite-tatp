@@ -61,32 +61,6 @@ target_compile_options(
         -DSQLITE_OMIT_AUTOINIT
 )
 
-add_library(
-        sqlite3_vdbe_profile
-        ${SQLITE_BUILDDIR}/sqlite3.c
-        ${SQLITE_BUILDDIR}/sqlite3.h
-)
-target_compile_options(
-        sqlite3_vdbe_profile
-        PRIVATE
-	-O2
-	-g 
-        -DSQLITE_DQS=0
-        -DSQLITE_THREADSAFE=0
-        -DSQLITE_DEFAULT_MEMSTATUS=0
-        -DSQLITE_DEFAULT_WAL_SYNCHRONOUS=1
-        -DSQLITE_LIKE_DOESNT_MATCH_BLOBS
-        -DSQLITE_MAX_EXPR_DEPTH=0
-        -DSQLITE_OMIT_DECLTYPE
-        -DSQLITE_OMIT_DEPRECATED
-        -DSQLITE_OMIT_PROGRESS_CALLBACK
-        -DSQLITE_OMIT_SHARED_CACHE
-        -DSQLITE_USE_ALLOCA
-        -DSQLITE_OMIT_AUTOINIT
-        -DSQLITE_PERFORMANCE_TRACE
-        -DSQLITE_HWTIME_USE_INTRINSIC
-)
-
 add_executable(
         sqlite3_shell
         ${SQLITE_BUILDDIR}/shell.c
