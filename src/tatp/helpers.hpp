@@ -9,8 +9,6 @@ cxxopts::Options tatp_options(const std::string &program,
                               const std::string &help_string = "") {
   cxxopts::Options options(program, help_string);
   cxxopts::OptionAdder adder = options.add_options();
-  adder("load", "Load the database");
-  adder("run", "Run the benchmark");
   adder("records", "Number of subscriber records",
         cxxopts::value<uint64_t>()->default_value("1000"));
   adder("clients", "Number of clients",
