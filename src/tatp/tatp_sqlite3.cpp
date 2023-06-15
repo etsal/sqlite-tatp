@@ -327,13 +327,12 @@ int main(int argc, char **argv) {
   sqlite::Connection conn;
   if (!extension.empty()) {
     db.connect(conn, extension).expect(SQLITE_OK);
-    conn.execute("PRAGMA synchronous=OFF").expect(SQLITE_OK);
+    conn.execute("PRAGMA synchronous=NORMAL").expect(SQLITE_OK);
     conn.execute("PRAGMA journal_mode=OFF").expect(SQLITE_OK);
   } else {
     db.connect(conn).expect(SQLITE_OK);
-    conn.execute("PRAGMA wal_autocheckpoint=4096").expect(SQLITE_OK);
-    conn.execute("PRAGMA journal_mode=WAL").expect(SQLITE_OK);
     conn.execute("PRAGMA synchronous=NORMAL").expect(SQLITE_OK);
+    conn.execute("PRAGMA journal_mode=WAL").expect(SQLITE_OK);
   }
 
   conn.execute("PRAGMA locking_mode=EXCLUSIVE").expect(SQLITE_OK);
