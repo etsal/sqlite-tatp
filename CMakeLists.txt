@@ -59,6 +59,8 @@ target_compile_options(
         -DSQLITE_OMIT_SHARED_CACHE
         -DSQLITE_USE_ALLOCA
         -DSQLITE_OMIT_AUTOINIT
+	-DSQLITE_MMAP_READWRITE
+	-DSQLITE_MAX_MMAP_SIZE=1073741824
 )
 
 add_executable(
