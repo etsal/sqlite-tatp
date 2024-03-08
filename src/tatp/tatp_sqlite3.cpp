@@ -6,7 +6,9 @@
 
 #include <sys/mman.h>
 #include <sls.h>
+#include <sls_wal.h>
 #include <cstdio>
+#include <fcntl.h>
 #include <unistd.h>
 #include <utility>
 
@@ -14,43 +16,6 @@ template <class... Ts> struct overloaded : Ts... { using Ts::operator()...; };
 template <class... Ts> overloaded(Ts...) -> overloaded<Ts...>;
 
 #define URI_MAXLEN (4096)
-
-void setup_sls(int oid) {
-  uint64_t epoch;
-  int error;
-
-  struct sls_attr attr = {
-    .attr_target = SLS_OSD,
-    .attr_mode = SLS_DELTA,
-    .attr_period = 0,
-    .attr_flags = SLSATTR_IGNUNLINKED,
-    .attr_amplification = 1,
-  };
-
-  error = sls_partadd(oid, attr, -1);
-  if (error != 0) {
-    fprintf(stderr, "sls_partadd: error %d\n", error);
-    exit(1);
-  }
-
-  error = sls_attach(oid, getpid());
-  if (error != 0) {
-    fprintf(stderr, "sls_attach: error %d\n", error);
-    exit(1);
-  }
-
-  error = sls_checkpoint_epoch(oid, true, &epoch);
-  if (error != 0) {
-    fprintf(stderr, "sls_checkpoint: error %d\n", error);
-    exit(1);
-  }
-
-  error = sls_epochwait(oid, epoch, true, NULL);
-  if (error != 0) {
-    fprintf(stderr, "sls_waitepoch: error %d\n", error);
-    exit(1);
-  }
-}
 
 void load(sqlite::Connection &conn, uint64_t n_subscriber_records) {
   for (const std::string &sql : tatp_create_sql("INTEGER", "INTEGER", "INTEGER",
@@ -293,30 +258,44 @@ int main(int argc, char **argv) {
     conn.enable_extensions();
     conn.load_extension(extension);
 
-    size_t mapsize_bytes = std::stoi(cache_size) * 1024 * 1024;
-	void *addr = mmap((void *)0x700000000000, mapsize_bytes, PROT_READ | PROT_WRITE,
-		MAP_ANONYMOUS | MAP_PRIVATE | MAP_FIXED, -1, 0);
-    if (addr == NULL) {
-      perror("mmap");
-      exit(1);
-    }
+  size_t mapsize_bytes = std::stoi(cache_size) * 1024 * 1024;
+  auto *name = "/sqlite.sas";
+  auto status = slsfs_sas_create((char *)name, mapsize_bytes);
+  if (status != 0) {
+	printf("slsfs_sas_create failed (error %d)\n", status);
+	exit(1);
+  }
+
+  auto fd = open(name, O_RDWR, 0666);
+  if (fd < 0) {
+  	perror("open");
+  	exit(1);
+  }
+
+  void *addr;
+  status = slsfs_sas_map(fd, (void **)&addr);
+  if (status != 0) {
+  	printf("slsfs_sas_map failed\n");
+  	exit(1);
+  }
+  if (addr == NULL) {
+	perror("mmap");
+	exit(1);
+  }
 
     /* Trigger the creation of the underlying object. */
     *(char *)addr = '1';
 
-    snprintf(fnamebuf, URI_MAXLEN, "file:///tatp.sqlite3.db?ptr=%p&sz=%d&max=%ld&oid=%s",
+    snprintf(fnamebuf, URI_MAXLEN, "file:///tatp.sqlite3.db?ptr=%p&sz=%d&max=%ld&fd=%d",
 		addr,
     		0,
     		mapsize_bytes,
-    		oid.c_str());
+    		fd);
   } else {
     snprintf(fnamebuf, URI_MAXLEN, "tatp.sqlite");
   }
 
   sqlite::Database db(fnamebuf);
-
-  if (!extension.empty())
-    setup_sls(std::stoi(oid));
 
   std::vector<Worker> workers;
 
@@ -327,11 +306,11 @@ int main(int argc, char **argv) {
   sqlite::Connection conn;
   if (!extension.empty()) {
     db.connect(conn, extension).expect(SQLITE_OK);
-    conn.execute("PRAGMA synchronous=FULL").expect(SQLITE_OK);
+    conn.execute("PRAGMA synchronous=NORMAL").expect(SQLITE_OK);
     conn.execute("PRAGMA journal_mode=OFF").expect(SQLITE_OK);
   } else {
     db.connect(conn).expect(SQLITE_OK);
-    conn.execute("PRAGMA synchronous=FULL").expect(SQLITE_OK);
+    conn.execute("PRAGMA synchronous=NORMAL").expect(SQLITE_OK);
     conn.execute("PRAGMA journal_mode=WAL").expect(SQLITE_OK);
   }
 
