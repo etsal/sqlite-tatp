@@ -93,18 +93,17 @@ set_target_properties(
         RUNTIME_OUTPUT_DIRECTORY ${CMAKE_CURRENT_BINARY_DIR}/tatp
 )
 
-# Blob executable.
-
-add_executable(blob_sqlite3 src/blob/blob_sqlite3.cpp)
-target_include_directories(blob_sqlite3 PRIVATE src ${SQLITE_BUILDDIR})
-target_link_libraries(blob_sqlite3 cxxopts dbbench_core sqlite3 sqlite3cpp)
+add_executable(tatp_sqlite3_objsnap src/tatp/tatp_sqlite3.cpp)
+target_compile_options(tatp_sqlite3_objsnap 
+						PRIVATE 
+						-g
+						-O2
+						-DUSE_MSNP_OBJSNP
+						)
+target_include_directories(tatp_sqlite3_objsnap PRIVATE src ${SQLITE_BUILDDIR})
+target_link_libraries(tatp_sqlite3_objsnap cxxopts dbbench_tatp sqlite3 sqlite3cpp msnp)
 set_target_properties(
-        blob_sqlite3
+        tatp_sqlite3_objsnap
         PROPERTIES
-        RUNTIME_OUTPUT_DIRECTORY ${CMAKE_CURRENT_BINARY_DIR}/blob
+        RUNTIME_OUTPUT_DIRECTORY ${CMAKE_CURRENT_BINARY_DIR}/tatp
 )
-
-# Scripts.
-configure_file(scripts/benchmarks/tatp.sh ${CMAKE_CURRENT_BINARY_DIR}/tatp/tatp.sh COPYONLY)
-configure_file(scripts/benchmarks/blob.sh ${CMAKE_CURRENT_BINARY_DIR}/blob/blob.sh COPYONLY)
-configure_file(scripts/all.sh ${CMAKE_CURRENT_BINARY_DIR}/all.sh COPYONLY)

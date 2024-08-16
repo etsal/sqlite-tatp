@@ -5,8 +5,12 @@
 #include "sqlite3.hpp"
 
 #include <sys/mman.h>
+#ifndef USE_MSNP_OBJSNP
 #include <sls.h>
 #include <sls_wal.h>
+#else
+#include <memsnap.h>
+#endif
 #include <cstdio>
 #include <fcntl.h>
 #include <unistd.h>
@@ -16,6 +20,12 @@ template <class... Ts> struct overloaded : Ts... { using Ts::operator()...; };
 template <class... Ts> overloaded(Ts...) -> overloaded<Ts...>;
 
 #define URI_MAXLEN (4096)
+
+#ifndef USE_MSNP_OBJSNP
+#define MEMSNAP_FILENAME "/sqlite.sas"
+#else
+#define MEMSNAP_FILENAME "/memsnap/sqlite.sas"
+#endif
 
 void load(sqlite::Connection &conn, uint64_t n_subscriber_records) {
   for (const std::string &sql : tatp_create_sql("INTEGER", "INTEGER", "INTEGER",
@@ -259,7 +269,7 @@ int main(int argc, char **argv) {
     conn.load_extension(extension);
 
   size_t mapsize_bytes = std::stoi(cache_size) * 1024 * 1024;
-  auto *name = "/sqlite.sas";
+  auto *name = MEMSNAP_FILENAME;
   auto status = slsfs_sas_create((char *)name, mapsize_bytes);
   if (status != 0) {
 	printf("slsfs_sas_create failed (error %d)\n", status);
@@ -286,7 +296,8 @@ int main(int argc, char **argv) {
     /* Trigger the creation of the underlying object. */
     *(char *)addr = '1';
 
-    snprintf(fnamebuf, URI_MAXLEN, "file:///tatp.sqlite3.db?ptr=%p&sz=%d&max=%ld&fd=%d",
+    snprintf(fnamebuf, URI_MAXLEN, "file://%s?ptr=%p&sz=%d&max=%ld&fd=%d",
+		MEMSNAP_FILENAME,
 		addr,
     		0,
     		mapsize_bytes,
